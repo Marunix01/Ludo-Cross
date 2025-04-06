@@ -1,250 +1,243 @@
-<!DOCTYPE html><html lang="en">
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ludo Game</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
-    body {
-      font-family: sans-serif;
-      background: #f0f0f0;
-      margin: 0;
-      text-align: center;
+    :root {
+      --red: #ff4d4d;
+      --green: #28a745;
+      --blue: #007bff;
+      --yellow: #ffc107;
+      --bg: #f8f9fa;
     }
-    #start-screen, #settings {
-      position: fixed;
-      inset: 0;
-      background: linear-gradient(#ffddcc, #ffeeee);
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: var(--bg);
       display: flex;
-      flex-direction: column;
       justify-content: center;
       align-items: center;
+      height: 100vh;
+      flex-direction: column;
     }
-    #start-screen h1, #settings h2 {
-      font-size: 2em;
-      margin-bottom: 20px;
-    }
-    button {
-      font-size: 16px;
-      padding: 10px 20px;
-      margin: 5px;
-    }
-    label {
-      font-size: 14px;
-    }
-    #board {
+    #gameContainer {
+      width: 90vmin;
+      height: 90vmin;
       display: grid;
-      grid-template-columns: repeat(15, 24px);
-      grid-template-rows: repeat(15, 24px);
-      margin: 10px auto;
-      width: fit-content;
-      gap: 1px;
-    }
-    .cell {
-      width: 24px;
-      height: 24px;
+      grid-template-columns: repeat(15, 1fr);
+      grid-template-rows: repeat(15, 1fr);
+      border: 5px solid #333;
       background: white;
-      border: 1px solid #ccc;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
       position: relative;
     }
-    .path { background: #ddd; }
-    .safe { background: #b0e0e6; }
-    .home-red { background: #faa; }
-    .home-green { background: #afa; }
-    .home-blue { background: #aaf; }
-    .home-yellow { background: #ffb; }
+    .cell {
+      border: 1px solid #ddd;
+      position: relative;
+    }
     .token {
-      width: 14px;
-      height: 14px;
+      width: 70%;
+      height: 70%;
       border-radius: 50%;
       position: absolute;
-      top: 4px;
-      left: 4px;
+      top: 15%;
+      left: 15%;
+      cursor: pointer;
+      z-index: 10;
+      transition: all 0.3s ease-in-out;
+      box-shadow: 0 0 5px rgba(0,0,0,0.2);
     }
-    .red { background: red; }
-    .green { background: green; }
-    .blue { background: blue; }
-    .yellow { background: goldenrod; }
-    #ui, #scoreboard {
-      margin-top: 10px;
+    .red { background: var(--red); }
+    .green { background: var(--green); }
+    .blue { background: var(--blue); }
+    .yellow { background: var(--yellow); }
+
+    #dice {
+      margin-top: 20px;
+      font-size: 28px;
+      font-weight: bold;
+      background: white;
+      border: 2px solid #444;
+      padding: 10px 20px;
+      border-radius: 8px;
+      box-shadow: 2px 2px 8px rgba(0,0,0,0.2);
+      transition: transform 0.4s ease;
     }
-    #music-toggle {
-      position: fixed;
-      top: 10px;
-      right: 10px;
+    #dice.rolling {
+      transform: rotate(720deg) scale(1.1);
+    }
+    #rollDiceBtn {
+      padding: 12px 25px;
+      font-size: 18px;
+      margin-top: 12px;
+      background: #444;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    #rollDiceBtn:hover {
+      background: #222;
+    }
+    #winMessage {
+      font-size: 22px;
+      color: green;
+      margin-top: 20px;
+      font-weight: bold;
     }
   </style>
 </head>
 <body>
-  <div id="start-screen">
-    <h1>Ludo Game</h1>
-    <button onclick="showSettings()">Play</button>
-  </div>  <div id="settings" style="display:none;">
-    <h2>Game Settings</h2>
-    <label>Number of Players: <input type="number" id="player-count" min="1" max="4" value="2"></label>
-    <label><input type="checkbox" id="use-bots" checked> Fill empty slots with bots</label>
-    <button onclick="startGame()">Start Game</button>
-  </div><button id="music-toggle" onclick="toggleMusic()">Toggle Music</button> <audio id="bg-music" loop> <source src="https://www.bensound.com/bensound-music/bensound-funkyelement.mp3" type="audio/mpeg"> </audio>
+  <div id="gameContainer"></div>
+  <div id="dice">Roll: -</div>
+  <button id="rollDiceBtn">Roll Dice</button>
+  <div id="winMessage"></div>
 
-  <div id="board"></div>  <div id="scoreboard">
-    <h3>Scoreboard</h3>
-    <ul id="score"></ul>
-  </div>  <div id="ui">
-    <button onclick="rollDice()">Roll Dice</button>
-    <button onclick="restartGame()">Restart</button>
-    <p id="diceText">Dice: -</p>
-    <p id="log">Player: -</p>
-  </div>  <script>
-    let board = document.getElementById("board");
-    let diceText = document.getElementById("diceText");
-    let log = document.getElementById("log");
-    let scoreList = document.getElementById("score");
-    let music = document.getElementById("bg-music");
-    let startScreen = document.getElementById("start-screen");
-    let settingsScreen = document.getElementById("settings");
+  <script>
+    const gameContainer = document.getElementById('gameContainer');
+    const diceDisplay = document.getElementById('dice');
+    const rollDiceBtn = document.getElementById('rollDiceBtn');
+    const winMessage = document.getElementById('winMessage');
 
-    let grid = [];
-    let allPlayers = ["red", "green", "yellow", "blue"];
-    let activePlayers = [];
-    let bots = {};
-    let playerTokens = {};
-    let playerScores = {};
-    let path = [], safeIndexes = [0, 8, 13, 21, 26, 34, 39, 47];
-    let turn = 0;
-    let dice = 0;
-
-    function showSettings() {
-      startScreen.style.display = 'none';
-      settingsScreen.style.display = 'flex';
+    const cells = [];
+    for (let i = 0; i < 225; i++) {
+      const div = document.createElement('div');
+      div.className = 'cell';
+      gameContainer.appendChild(div);
+      cells.push(div);
     }
 
-    function startGame() {
-      settingsScreen.style.display = 'none';
-      let count = parseInt(document.getElementById("player-count").value);
-      let useBots = document.getElementById("use-bots").checked;
-      activePlayers = allPlayers.slice(0, count);
-      for (let i = count; i < 4; i++) {
-        if (useBots) {
-          activePlayers.push(allPlayers[i]);
-          bots[allPlayers[i]] = true;
-        }
-      }
-      resetGame();
-      music.play();
-    }
+    const paths = {
+      red: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      green: [224, 209, 194, 179, 164, 149, 134, 119, 104, 89, 74, 59],
+      yellow: [210, 211, 212, 213, 214, 215, 216, 217, 218, 219, 220, 221],
+      blue: [14, 29, 44, 59, 74, 89, 104, 119, 134, 149, 164, 179]
+    };
 
-    function toggleMusic() {
-      music.paused ? music.play() : music.pause();
-    }
+    const homeCells = {
+      red: 11,
+      green: 59,
+      yellow: 221,
+      blue: 179
+    };
 
-    function restartGame() {
-      location.reload();
-    }
+    const startPositions = {
+      red: [0, 1],
+      green: [224, 223],
+      blue: [14, 29],
+      yellow: [210, 211]
+    };
 
-    function resetGame() {
-      board.innerHTML = "";
-      grid = [];
-      playerTokens = {};
-      playerScores = {};
-      turn = 0;
-      createBoard();
-      activePlayers.forEach(p => {
-        playerTokens[p] = [0, 0, 0, 0];
-        playerScores[p] = 0;
-      });
-      updateScoreboard();
-      log.textContent = "Player: " + activePlayers[turn];
-    }
+    const tokens = {};
+    const players = ['red', 'green', 'yellow', 'blue'];
+    let currentPlayerIndex = 0;
+    let diceValue = null;
 
-    function createBoard() {
-      const basicPath = [
-        7, 8, 9, 10, 11, 12, 13, 28, 43, 58, 73, 88, 103, 102, 101, 100, 99, 98,
-        97, 82, 67, 52, 37, 22, 21, 20, 19, 18, 17, 2, 1, 0, 15, 30, 45, 60, 75, 90,
-        105, 106, 107, 108, 109, 110, 111, 96, 81, 66, 51, 36, 35, 34
-      ];
-      path = basicPath;
+    Object.keys(startPositions).forEach(color => {
+      tokens[color] = [];
+      startPositions[color].forEach((startIndex, i) => {
+        const token = document.createElement('div');
+        token.className = `token ${color}`;
+        cells[startIndex].appendChild(token);
+        const tokenObj = {
+          el: token,
+          pathIndex: 0,
+          position: startIndex,
+          active: false,
+          color: color,
+          reachedHome: false
+        };
+        tokens[color].push(tokenObj);
 
-      for (let i = 0; i < 225; i++) {
-        let cell = document.createElement("div");
-        cell.classList.add("cell");
-        board.appendChild(cell);
-        grid.push(cell);
-      }
-      path.forEach((i, idx) => {
-        grid[i].classList.add("path");
-        if (safeIndexes.includes(idx)) grid[i].classList.add("safe");
-      });
-    }
-
-    function updateScoreboard() {
-      scoreList.innerHTML = activePlayers.map(p => `<li>${p}: ${playerScores[p]} finished</li>`).join('');
-    }
-
-    function rollDice() {
-      dice = Math.floor(Math.random() * 6) + 1;
-      diceText.textContent = "Dice: " + dice;
-      let currentPlayer = activePlayers[turn];
-      log.textContent = `Player: ${currentPlayer}`;
-      if (bots[currentPlayer]) {
-        setTimeout(() => moveBot(currentPlayer), 1000);
-      } else {
-        setTimeout(() => allowMove(currentPlayer), 300);
-      }
-    }
-
-    function moveBot(player) {
-      let tokens = playerTokens[player];
-      for (let i = 0; i < 4; i++) {
-        if (tokens[i] + dice < path.length) {
-          moveToken(player, i);
-          return;
-        }
-      }
-      nextTurn();
-    }
-
-    function allowMove(player) {
-      let tokens = playerTokens[player];
-      for (let i = 0; i < 4; i++) {
-        let pos = tokens[i];
-        let newPos = pos + dice;
-        if (newPos < path.length) {
-          grid[path[newPos]].onclick = () => {
-            moveToken(player, i);
-            disableAllClicks();
+        token.addEventListener('click', () => {
+          if (diceValue !== null && players[currentPlayerIndex] === color && !tokenObj.reachedHome) {
+            if (!tokenObj.active && diceValue === 6) {
+              tokenObj.active = true;
+              tokenObj.pathIndex = 0;
+              moveToken(tokenObj, paths[color][0]);
+              endTurn();
+            } else if (tokenObj.active) {
+              let newIndex = tokenObj.pathIndex + diceValue;
+              if (newIndex < paths[color].length) {
+                const newCell = paths[color][newIndex];
+                checkCapture(newCell, tokenObj);
+                moveToken(tokenObj, newCell);
+                tokenObj.pathIndex = newIndex;
+                if (newCell === homeCells[color]) {
+                  tokenObj.reachedHome = true;
+                  checkWinCondition(color);
+                }
+                endTurn();
+              }
+            }
           }
+        });
+      });
+    });
+
+    function moveToken(tokenObj, newCellIndex) {
+      const rect1 = cells[tokenObj.position].getBoundingClientRect();
+      const rect2 = cells[newCellIndex].getBoundingClientRect();
+      const dx = rect2.left - rect1.left;
+      const dy = rect2.top - rect1.top;
+      tokenObj.el.style.transform = `translate(${dx}px, ${dy}px)`;
+      setTimeout(() => {
+        tokenObj.el.style.transform = 'translate(0, 0)';
+        cells[tokenObj.position].removeChild(tokenObj.el);
+        cells[newCellIndex].appendChild(tokenObj.el);
+        tokenObj.position = newCellIndex;
+      }, 300);
+    }
+
+    function checkCapture(cellIndex, movingToken) {
+      players.forEach(color => {
+        if (color !== movingToken.color) {
+          tokens[color].forEach(token => {
+            if (token.position === cellIndex && token.active && !token.reachedHome) {
+              cells[token.position].removeChild(token.el);
+              token.active = false;
+              token.pathIndex = 0;
+              token.position = startPositions[color][0];
+              cells[token.position].appendChild(token.el);
+            }
+          });
         }
+      });
+    }
+
+    function endTurn() {
+      diceValue = null;
+      currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
+      updateTurnDisplay();
+    }
+
+    function updateTurnDisplay() {
+      diceDisplay.textContent = `${players[currentPlayerIndex].toUpperCase()}'s Turn - Roll: ${diceValue !== null ? diceValue : '-'}`;
+    }
+
+    function checkWinCondition(color) {
+      const allHome = tokens[color].every(token => token.reachedHome);
+      if (allHome) {
+        winMessage.textContent = `${color.toUpperCase()} Wins!`;
+        rollDiceBtn.disabled = true;
       }
     }
 
-    function moveToken(player, index) {
-      let pos = playerTokens[player][index];
-      let newPos = pos + dice;
-      if (newPos >= path.length) {
-        playerScores[player]++;
-        playerTokens[player][index] = path.length + 1;
-        updateScoreboard();
-        if (playerScores[player] === 4) {
-          log.textContent = `${player.toUpperCase()} WINS!`;
-          return;
-        }
-        nextTurn();
-        return;
+    rollDiceBtn.addEventListener('click', () => {
+      if (diceValue === null) {
+        diceDisplay.classList.add('rolling');
+        setTimeout(() => {
+          diceValue = Math.floor(Math.random() * 6) + 1;
+          diceDisplay.classList.remove('rolling');
+          updateTurnDisplay();
+        }, 500);
       }
-      grid[path[pos]].innerHTML = "";
-      playerTokens[player][index] = newPos;
-      let token = document.createElement("div");
-      token.className = `token ${player}`;
-      grid[path[newPos]].appendChild(token);
-      nextTurn();
-    }
+    });
 
-    function disableAllClicks() {
-      grid.forEach(cell => cell.onclick = null);
-    }
-
-    function nextTurn() {
-      if (dice !== 6) turn = (turn + 1) % activePlayers.length;
-      log.textContent = "Player: " + activePlayers[turn];
-    }
-  </script></body>
+    updateTurnDisplay();
+  </script>
+</body>
 </html>
